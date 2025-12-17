@@ -33,7 +33,7 @@ from deauther import (
     get_band_from_channel,
     scan_networks_and_clients,
     scan_networks_live,
-    scan_networks_timed,
+    scan_networks_realtime,
     # Attack
     kill_all_attacks,
     deauth_attack_single_optimized,
@@ -103,22 +103,21 @@ def handle_broadcast_attack():
     if not mon: 
         mon = enable_monitor_mode()
     
-    # Use timed scan (10 seconds auto-stop)
-    nets = scan_networks_timed(mon, duration=10)
+    # Use real-time scan (Ctrl+C to stop)
+    nets = scan_networks_realtime(mon)
     
     if not nets:
         print(f"{Color.FAIL}No targets found.{Color.ENDC}")
         time.sleep(2)
         return
     
-    # Table with MAC address column
+    # Display final results after scan stopped
     print(f"\n{Color.WARNING}No  PWR    CH   BAND   ENC           BSSID              ESSID{Color.ENDC}")
     print("-" * 100)
     for i, n in enumerate(nets):
         band_color = Color.CYAN if n.get('band') == '5G' else Color.GREEN
         enc = n.get('encryption', '?')
         bssid = n.get('bssid', '??:??:??:??:??:??')
-        # Color code encryption
         if 'WPA3' in enc:
             enc_color = Color.CYAN
         elif 'WPA2' in enc:

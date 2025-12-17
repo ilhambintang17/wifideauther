@@ -50,7 +50,7 @@ from .scanner import (
     parse_clients_from_csv,
     scan_networks_and_clients,
     scan_networks_live,
-    scan_networks_timed
+    scan_networks_realtime
 )
 
 from .attack import (
@@ -102,7 +102,7 @@ __all__ = [
     'parse_clients_from_csv',
     'scan_networks_and_clients',
     'scan_networks_live',
-    'scan_networks_timed',
+    'scan_networks_realtime',
     # Attack
     'kill_all_attacks',
     'deauth_attack_single_optimized',
