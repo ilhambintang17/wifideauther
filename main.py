@@ -132,6 +132,8 @@ def handle_broadcast_attack():
     print(f"\n{Color.CYAN}[TIP] Multi: 1,2,3,4,5 (max {MAX_TARGETS}){Color.ENDC}")
     print(f"{Color.GREEN}[TIP] Same channel = OPTIMAL!{Color.ENDC}")
     print(f"{Color.FAIL}[!] JANGAN mix 2.4G + 5G (tidak bisa simultan!){Color.ENDC}")
+    print(f"{Color.WARNING}[!] BROADCAST attack may be IGNORED by some devices!{Color.ENDC}")
+    print(f"{Color.GREEN}[TIP] For better results → Use Menu 5 (Targeted Attack){Color.ENDC}")
     
     pilih = input(f"\n{Color.BOLD}Target numbers ('m' for menu): {Color.ENDC}")
     
