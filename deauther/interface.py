@@ -27,14 +27,55 @@ def get_mon_interface():
         return None
 
 
+def is_monitor_mode(interface):
+    """Check if a specific interface is in monitor mode"""
+    try:
+        result = subprocess.check_output(
+            f"iwconfig {interface} 2>/dev/null",
+            shell=True
+        ).decode()
+        return "Mode:Monitor" in result
+    except:
+        return False
+
+
 def enable_monitor_mode():
-    """Enable monitor mode on the wireless interface"""
+    """Enable monitor mode on the wireless interface
+    
+    Handles cases where interface name doesn't change after enabling monitor mode
+    (e.g., wlan1 stays as wlan1 instead of becoming wlan1mon)
+    """
     print(f"{Color.BLUE}[*] Enable Monitor Mode...{Color.ENDC}")
     run_command("airmon-ng check kill")
     run_command(f"airmon-ng start {INTERFACE_ASLI}")
     time.sleep(2)
+    
+    # First, try to get interface that has 'mon' suffix (standard behavior)
     mon = get_mon_interface()
-    return mon if mon else INTERFACE_ASLI
+    if mon:
+        print(f"{Color.GREEN}[+] Monitor interface: {mon}{Color.ENDC}")
+        return mon
+    
+    # If no 'mon' interface found, check if original interface is now in monitor mode
+    # This handles adapters that don't rename interface (e.g., some MediaTek drivers)
+    if is_monitor_mode(INTERFACE_ASLI):
+        print(f"{Color.GREEN}[+] Monitor mode enabled on: {INTERFACE_ASLI} (name unchanged){Color.ENDC}")
+        return INTERFACE_ASLI
+    
+    # Also check for common variations like wlan0mon, wlan1mon, etc.
+    common_mon_names = [
+        f"{INTERFACE_ASLI}mon",
+        INTERFACE_ASLI.replace("wlp", "wlan") + "mon" if "wlp" in INTERFACE_ASLI else None,
+        "wlan0mon", "wlan1mon", "wlan2mon"
+    ]
+    for mon_name in common_mon_names:
+        if mon_name and is_monitor_mode(mon_name):
+            print(f"{Color.GREEN}[+] Found monitor interface: {mon_name}{Color.ENDC}")
+            return mon_name
+    
+    # Final fallback - assume original interface can be used
+    print(f"{Color.WARNING}[!] Could not verify monitor mode, using: {INTERFACE_ASLI}{Color.ENDC}")
+    return INTERFACE_ASLI
 
 
 def verify_channel_lock(mon_iface, expected_channel):

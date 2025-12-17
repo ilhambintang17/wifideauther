@@ -16,6 +16,7 @@ Tool deauthentication WiFi multi-target dengan fitur thermal protection dan duku
 - 🌡️ **Thermal Protection** - Auto-shutdown saat suhu kritis
 - 👥 **Client Targeting** - Serang client spesifik (lebih efektif)
 - 🔄 **Graceful Shutdown** - Restore NetworkManager otomatis
+- 🔌 **Flexible Interface Handling** - Support adapter yang nama interface tidak berubah setelah monitor mode
 
 ## 📋 Requirements
 
@@ -171,6 +172,14 @@ sudo airmon-ng check kill
 # Restart driver
 sudo modprobe -r <driver_name>
 sudo modprobe <driver_name>
+```
+
+### Interface name tidak berubah setelah monitor mode
+Beberapa adapter (terutama MediaTek) tidak mengubah nama interface setelah enable monitor mode (misal `wlan1` tetap `wlan1` bukan `wlan1mon`). Tool ini sudah menangani kasus tersebut secara otomatis.
+
+Output yang mungkin muncul:
+```
+[+] Monitor mode enabled on: wlan1 (name unchanged)
 ```
 
 ### Permission denied

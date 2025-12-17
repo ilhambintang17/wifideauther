@@ -37,6 +37,7 @@ from .thermal import (
 
 from .interface import (
     get_mon_interface,
+    is_monitor_mode,
     enable_monitor_mode,
     verify_channel_lock,
     lock_channel_robust,
@@ -89,6 +90,7 @@ __all__ = [
     'stop_thermal_monitor',
     # Interface
     'get_mon_interface',
+    'is_monitor_mode',
     'enable_monitor_mode',
     'verify_channel_lock',
     'lock_channel_robust',
