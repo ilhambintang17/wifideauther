@@ -46,7 +46,29 @@ def enable_monitor_mode():
     (e.g., wlan1 stays as wlan1 instead of becoming wlan1mon)
     """
     print(f"{Color.BLUE}[*] Enable Monitor Mode...{Color.ENDC}")
+    
+    # Stop services that can interfere with monitor mode
+    subprocess.call("systemctl stop NetworkManager 2>/dev/null", shell=True, 
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.call("systemctl stop avahi-daemon 2>/dev/null", shell=True,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.call("systemctl stop wpa_supplicant 2>/dev/null", shell=True,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    
+    # Kill interfering processes - run twice to catch respawning processes
     run_command("airmon-ng check kill")
+    time.sleep(0.5)
+    run_command("airmon-ng check kill")
+    
+    # Kill any remaining avahi-daemon processes directly
+    subprocess.call("pkill -9 avahi-daemon 2>/dev/null", shell=True,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.call("pkill -9 wpa_supplicant 2>/dev/null", shell=True,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    
+    time.sleep(0.5)
+    
+    # Now enable monitor mode
     run_command(f"airmon-ng start {INTERFACE_ASLI}")
     time.sleep(2)
     

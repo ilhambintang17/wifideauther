@@ -49,7 +49,8 @@ from .scanner import (
     get_band_from_channel,
     parse_clients_from_csv,
     scan_networks_and_clients,
-    scan_networks_live
+    scan_networks_live,
+    scan_networks_timed
 )
 
 from .attack import (
@@ -101,6 +102,7 @@ __all__ = [
     'parse_clients_from_csv',
     'scan_networks_and_clients',
     'scan_networks_live',
+    'scan_networks_timed',
     # Attack
     'kill_all_attacks',
     'deauth_attack_single_optimized',

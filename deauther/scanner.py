@@ -225,3 +225,82 @@ def scan_networks_live(mon_iface):
         print(f"{Color.FAIL}[!] Error: {e}{Color.ENDC}")
         
     return sorted(networks, key=lambda x: int(x['power']), reverse=True)
+
+
+def scan_networks_timed(mon_iface, duration=10):
+    """Scan networks with automatic timeout (no Ctrl+C needed)
+    
+    Args:
+        mon_iface: Monitor mode interface name
+        duration: Scan duration in seconds (default 10)
+    
+    Returns:
+        List of networks sorted by signal strength
+    """
+    import subprocess
+    
+    print(f"{Color.BLUE}[*] Auto-scanning for {duration} seconds...{Color.ENDC}")
+    print(f"{Color.CYAN}[*] Scanning ALL bands: 2.4GHz + 5GHz{Color.ENDC}")
+    
+    run_command("rm -f /tmp/kismet_scan*")
+    
+    # Run airodump-ng in background with timeout
+    scan_cmd = f"timeout {duration} airodump-ng --band abg --output-format csv -w /tmp/kismet_scan {mon_iface}"
+    
+    # Open xterm with the scan command - will auto-close after timeout
+    xterm_cmd = f"xterm -geometry 120x35 -title 'SCANNING ({duration}s remaining) - AUTO CLOSE' -e '{scan_cmd}'"
+    os.system(xterm_cmd)
+    
+    print(f"{Color.GREEN}[+] Scan complete!{Color.ENDC}")
+    
+    networks = []
+    try:
+        list_of_files = glob.glob('/tmp/kismet_scan*.csv')
+        if not list_of_files: 
+            return []
+        latest_file = max(list_of_files, key=os.path.getctime)
+        
+        with open(latest_file, 'r', errors='ignore') as csvfile:
+            reader = csv.reader(csvfile)
+            for row in reader:
+                if len(row) < 14: 
+                    continue
+                bssid = row[0].strip()
+                channel = row[3].strip()
+                privacy = row[5].strip() if len(row) > 5 else ""
+                cipher = row[6].strip() if len(row) > 6 else ""
+                auth = row[7].strip() if len(row) > 7 else ""
+                power = row[8].strip()
+                essid = row[13].strip()
+                
+                if bssid == "BSSID" or bssid == "Station MAC": 
+                    continue
+                if not essid: 
+                    essid = "<Hidden>"
+                
+                try:
+                    pwr_int = int(power)
+                    if pwr_int == -1 or pwr_int < -78: 
+                        continue
+                except:
+                    continue
+                
+                # Format encryption string
+                enc = privacy if privacy else "OPN"
+                if cipher:
+                    enc = f"{privacy}/{cipher}"
+                if "SAE" in auth:
+                    enc = "WPA3" if "WPA3" in privacy else f"WPA2/WPA3"
+
+                networks.append({
+                    "bssid": bssid, 
+                    "channel": channel, 
+                    "essid": essid, 
+                    "power": power,
+                    "band": get_band_from_channel(channel),
+                    "encryption": enc
+                })
+    except Exception as e:
+        print(f"{Color.FAIL}[!] Error: {e}{Color.ENDC}")
+        
+    return sorted(networks, key=lambda x: int(x['power']), reverse=True)

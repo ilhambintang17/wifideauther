@@ -33,6 +33,7 @@ from deauther import (
     get_band_from_channel,
     scan_networks_and_clients,
     scan_networks_live,
+    scan_networks_timed,
     # Attack
     kill_all_attacks,
     deauth_attack_single_optimized,
@@ -102,18 +103,21 @@ def handle_broadcast_attack():
     if not mon: 
         mon = enable_monitor_mode()
     
-    nets = scan_networks_live(mon)
+    # Use timed scan (10 seconds auto-stop)
+    nets = scan_networks_timed(mon, duration=10)
     
     if not nets:
         print(f"{Color.FAIL}No targets found.{Color.ENDC}")
         time.sleep(2)
         return
-        
-    print(f"\n{Color.WARNING}No\tPWR\tCH\tBAND\tENC\t\tESSID{Color.ENDC}")
-    print("-" * 90)
+    
+    # Table with MAC address column
+    print(f"\n{Color.WARNING}No  PWR    CH   BAND   ENC           BSSID              ESSID{Color.ENDC}")
+    print("-" * 100)
     for i, n in enumerate(nets):
         band_color = Color.CYAN if n.get('band') == '5G' else Color.GREEN
         enc = n.get('encryption', '?')
+        bssid = n.get('bssid', '??:??:??:??:??:??')
         # Color code encryption
         if 'WPA3' in enc:
             enc_color = Color.CYAN
@@ -123,8 +127,8 @@ def handle_broadcast_attack():
             enc_color = Color.FAIL
         else:
             enc_color = Color.WARNING
-        print(f"{i+1}\t{n['power']}\t{n['channel']}\t{band_color}{n.get('band', '?')}{Color.ENDC}\t{enc_color}{enc:12}{Color.ENDC}\t{n['essid']}")
-    print("-" * 90)
+        print(f"{i+1:<3} {n['power']:>4}   {n['channel']:>3}  {band_color}{n.get('band', '?'):>4}{Color.ENDC}   {enc_color}{enc:<13}{Color.ENDC} {bssid}   {n['essid']}")
+    print("-" * 100)
     
     print(f"\n{Color.CYAN}[TIP] Multi: 1,2,3,4,5 (max {MAX_TARGETS}){Color.ENDC}")
     print(f"{Color.GREEN}[TIP] Same channel = OPTIMAL!{Color.ENDC}")
@@ -211,16 +215,17 @@ def handle_targeted_attack():
         time.sleep(2)
         return
     
-    # Display networks
+    # Display networks with MAC address
     print(f"\n{Color.WARNING}=== NETWORKS FOUND ==={Color.ENDC}")
-    print(f"{Color.WARNING}No\tPWR\tCH\tBAND\tENC\t\tCLIENTS\tESSID{Color.ENDC}")
-    print("-" * 100)
+    print(f"{Color.WARNING}No  PWR    CH   BAND   ENC           CLIENTS  BSSID              ESSID{Color.ENDC}")
+    print("-" * 110)
     for i, n in enumerate(nets):
         # Count clients for this network
         client_count = len([c for c in clients if c['bssid'] == n['bssid']])
-        client_indicator = f"{Color.GREEN}{client_count}{Color.ENDC}" if client_count > 0 else "0"
+        client_indicator = f"{Color.GREEN}{client_count:>2}{Color.ENDC}" if client_count > 0 else " 0"
         band_color = Color.CYAN if n.get('band') == '5G' else Color.GREEN
         enc = n.get('encryption', '?')
+        bssid = n.get('bssid', '??:??:??:??:??:??')
         # Color code encryption
         if 'WPA3' in enc:
             enc_color = Color.CYAN
@@ -230,8 +235,8 @@ def handle_targeted_attack():
             enc_color = Color.FAIL
         else:
             enc_color = Color.WARNING
-        print(f"{i+1}\t{n['power']}\t{n['channel']}\t{band_color}{n.get('band', '?')}{Color.ENDC}\t{enc_color}{enc:12}{Color.ENDC}\t{client_indicator}\t{n['essid']}")
-    print("-" * 100)
+        print(f"{i+1:<3} {n['power']:>4}   {n['channel']:>3}  {band_color}{n.get('band', '?'):>4}{Color.ENDC}   {enc_color}{enc:<13}{Color.ENDC} {client_indicator}       {bssid}   {n['essid']}")
+    print("-" * 110)
     
     # Show client summary
     if clients:
