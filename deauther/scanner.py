@@ -228,10 +228,10 @@ def scan_networks_live(mon_iface):
 
 
 def scan_networks_realtime(mon_iface, update_interval=1.0):
-    """Scan networks with real-time display in terminal
+    """Scan networks with xterm window AND real-time display in main terminal
     
-    Runs airodump-ng in background and displays results live.
-    Press Ctrl+C to stop scanning and proceed with target selection.
+    Opens xterm for airodump-ng visualization while also showing
+    results live in the main terminal. Press Ctrl+C to stop.
     
     Args:
         mon_iface: Monitor mode interface name
@@ -243,21 +243,22 @@ def scan_networks_realtime(mon_iface, update_interval=1.0):
     import subprocess
     import signal
     
-    print(f"{Color.BLUE}[*] Starting real-time scan...{Color.ENDC}")
-    print(f"{Color.CYAN}[*] Scanning ALL bands: 2.4GHz + 5GHz{Color.ENDC}")
-    print(f"{Color.WARNING}[!] Press Ctrl+C to stop scanning and select targets{Color.ENDC}")
-    print()
-    
     run_command("rm -f /tmp/kismet_scan*")
     
-    # Run airodump-ng in background
-    scan_process = subprocess.Popen(
-        f"airodump-ng --band abg --output-format csv -w /tmp/kismet_scan {mon_iface}",
+    # Open xterm with airodump-ng (visible to user)
+    xterm_process = subprocess.Popen(
+        f"xterm -geometry 130x40 -title 'AIRODUMP-NG SCAN - Press Ctrl+C in MAIN terminal to stop' "
+        f"-e 'airodump-ng --band abg --output-format csv -w /tmp/kismet_scan {mon_iface}'",
         shell=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        preexec_fn=os.setsid  # Create new process group for clean termination
+        preexec_fn=os.setsid
     )
+    
+    print(f"\n{Color.HEADER}{'='*80}{Color.ENDC}")
+    print(f"{Color.HEADER}  REAL-TIME NETWORK SCAN{Color.ENDC}")
+    print(f"{Color.HEADER}{'='*80}{Color.ENDC}")
+    print(f"{Color.WARNING}[!] xterm window opened for airodump-ng visualization{Color.ENDC}")
+    print(f"{Color.FAIL}[!] Press Ctrl+C here to STOP scanning and select targets{Color.ENDC}")
+    print()
     
     networks = []
     scan_running = True
@@ -274,6 +275,11 @@ def scan_networks_realtime(mon_iface, update_interval=1.0):
         while scan_running:
             time.sleep(update_interval)
             scan_count += 1
+            
+            # Check if xterm is still running
+            if xterm_process.poll() is not None:
+                # xterm was closed by user
+                break
             
             # Parse current results
             networks = []
@@ -307,7 +313,6 @@ def scan_networks_realtime(mon_iface, update_interval=1.0):
                             except:
                                 continue
                             
-                            # Format encryption string
                             enc = privacy if privacy else "OPN"
                             if cipher:
                                 enc = f"{privacy}/{cipher}"
@@ -325,48 +330,30 @@ def scan_networks_realtime(mon_iface, update_interval=1.0):
             except Exception:
                 pass
             
-            # Sort and display
+            # Sort networks
             networks = sorted(networks, key=lambda x: int(x.get('power', -100)), reverse=True)
             
-            # Clear screen and show results
-            os.system('clear')
-            print(f"{Color.HEADER}{'='*100}{Color.ENDC}")
-            print(f"{Color.HEADER}  REAL-TIME NETWORK SCAN | Found: {len(networks)} networks | Time: {scan_count}s{Color.ENDC}")
-            print(f"{Color.HEADER}{'='*100}{Color.ENDC}")
-            print(f"{Color.WARNING}[!] Press Ctrl+C to stop and select targets{Color.ENDC}")
-            print()
-            
-            if networks:
-                print(f"{Color.WARNING}No  PWR    CH   BAND   ENC           BSSID              ESSID{Color.ENDC}")
-                print("-" * 100)
-                for i, n in enumerate(networks[:30]):  # Limit to top 30 for display
-                    band_color = Color.CYAN if n.get('band') == '5G' else Color.GREEN
-                    enc = n.get('encryption', '?')
-                    bssid = n.get('bssid', '??:??:??:??:??:??')
-                    if 'WPA3' in enc:
-                        enc_color = Color.CYAN
-                    elif 'WPA2' in enc:
-                        enc_color = Color.GREEN
-                    elif 'WEP' in enc or 'OPN' in enc:
-                        enc_color = Color.FAIL
-                    else:
-                        enc_color = Color.WARNING
-                    print(f"{i+1:<3} {n['power']:>4}   {n['channel']:>3}  {band_color}{n.get('band', '?'):>4}{Color.ENDC}   {enc_color}{enc:<13}{Color.ENDC} {bssid}   {n['essid'][:25]}")
-                print("-" * 100)
-            else:
-                print(f"{Color.CYAN}[*] Scanning... waiting for networks...{Color.ENDC}")
+            # Display in main terminal (without clearing - just update)
+            print(f"\r{Color.CYAN}[SCAN] Found: {len(networks):3} networks | Time: {scan_count:3}s | {Color.FAIL}Press Ctrl+C to STOP{Color.ENDC}   ", end="", flush=True)
     
     finally:
         # Restore signal handler
         signal.signal(signal.SIGINT, old_handler)
         
-        # Kill the airodump process
+        # Kill the xterm process
         try:
-            os.killpg(os.getpgid(scan_process.pid), signal.SIGTERM)
+            os.killpg(os.getpgid(xterm_process.pid), signal.SIGTERM)
         except:
-            scan_process.terminate()
+            try:
+                xterm_process.terminate()
+            except:
+                pass
         
-        scan_process.wait()
-        print(f"\n{Color.GREEN}[+] Scan stopped. Found {len(networks)} networks.{Color.ENDC}")
+        try:
+            xterm_process.wait(timeout=2)
+        except:
+            pass
+        
+        print(f"\n\n{Color.GREEN}[+] Scan stopped. Found {len(networks)} networks.{Color.ENDC}")
     
     return networks
