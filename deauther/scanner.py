@@ -26,7 +26,10 @@ def get_band_from_channel(channel):
 
 
 def parse_clients_from_csv(csv_file):
-    """Parse connected clients from airodump-ng CSV file"""
+    """Parse connected clients from airodump-ng CSV file
+    
+    Less strict filtering to catch more clients.
+    """
     clients = []
     in_client_section = False
     
@@ -53,21 +56,24 @@ def parse_clients_from_csv(csv_file):
                         packets = row[4].strip() if len(row) > 4 else "0"
                         bssid = row[5].strip() if len(row) > 5 else "(not associated)"
                         
-                        # Filter client yang tidak terkoneksi atau sinyal lemah
+                        # Only skip if not associated - accept all associated clients
+                        # Including those with power -1 (not yet measured)
+                        if bssid == "(not associated)" or bssid == "":
+                            continue
+                        
+                        # Only skip if explicitly too weak (< -90 dBm)
                         try:
                             pwr_int = int(power)
-                            pkt_int = int(packets)
-                            if pwr_int == -1 or pwr_int < -85:
-                                continue
-                            if bssid == "(not associated)":
+                            # Accept power -1 (not measured yet) - this is common for new clients
+                            if pwr_int != -1 and pwr_int < -90:
                                 continue
                         except:
-                            continue
+                            pass  # If power parsing fails, still include client
                         
                         clients.append({
                             "station_mac": station_mac,
                             "bssid": bssid,
-                            "power": power,
+                            "power": power if power != "-1" else "N/A",
                             "packets": packets
                         })
     except Exception as e:
@@ -80,14 +86,15 @@ def scan_networks_and_clients(mon_iface):
     """Scan networks AND clients simultaneously (2.4GHz + 5GHz)"""
     print(f"{Color.BLUE}[*] Opening scan window (Networks + Clients)...{Color.ENDC}")
     print(f"{Color.CYAN}[*] Scanning ALL bands: 2.4GHz + 5GHz{Color.ENDC}")
-    print(f"{Color.WARNING}[!] Press Ctrl+C in XTERM when done!{Color.ENDC}")
-    print(f"{Color.CYAN}[TIP] Scan lebih lama = lebih banyak client terdeteksi{Color.ENDC}")
+    print(f"{Color.WARNING}[!] IMPORTANT: Scan for at least 30-60 seconds to detect clients!{Color.ENDC}")
+    print(f"{Color.WARNING}[!] Press Ctrl+C in XTERM window when done scanning{Color.ENDC}")
+    print(f"{Color.CYAN}[TIP] Longer scan = more clients detected{Color.ENDC}")
     time.sleep(2)
     
     run_command("rm -f /tmp/kismet_scan*")
     
     # --band abg = scan semua band (a=5GHz, b/g=2.4GHz)
-    cmd = f"xterm -geometry 120x35 -title 'SCANNING ALL BANDS (2.4GHz + 5GHz) - CTRL+C TO STOP' -e 'airodump-ng --band abg --output-format csv -w /tmp/kismet_scan {mon_iface}'"
+    cmd = f"xterm -geometry 130x40 -title 'SCANNING - Wait 30-60 seconds for clients! - CTRL+C to stop' -e 'airodump-ng --band abg --output-format csv -w /tmp/kismet_scan {mon_iface}'"
     os.system(cmd)
     
     networks = []

@@ -3,7 +3,7 @@
 # ============================================================
 
 # --- INTERFACE ---
-INTERFACE_ASLI = "wlp1s0"
+INTERFACE_ASLI = "wlx3c7895950919"
 
 # --- ATTACK PARAMETERS ---
 MAX_TARGETS = 5
