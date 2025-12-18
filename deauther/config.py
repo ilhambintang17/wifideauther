@@ -3,14 +3,14 @@
 # ============================================================
 
 # --- INTERFACE ---
-INTERFACE_ASLI = "wlx3c7895950919"
+INTERFACE_ASLI = "wlp1s0"
 
 # --- ATTACK PARAMETERS ---
-MAX_TARGETS = 5
+MAX_TARGETS = 20
 # Use 0 for continuous infinite packets (MOST AGGRESSIVE)
 # Higher number = more packets per burst
 DEAUTH_PACKETS = 0  # 0 = continuous attack (tidak berhenti)
-DEAUTH_DELAY = 0    # No delay between bursts for maximum effectiveness
+DEAUTH_DELAY = 0.1    # No delay between bursts for maximum effectiveness
 CHANNEL_LOCK_TIME = 1.0  # Waktu tunggu setelah lock channel
 BURST_STAGGER = 0.1  # Faster spawn for quicker attack start
 

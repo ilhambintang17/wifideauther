@@ -364,3 +364,46 @@ def scan_networks_realtime(mon_iface, update_interval=1.0):
         print(f"\n\n{Color.GREEN}[+] Scan stopped. Found {len(networks)} networks.{Color.ENDC}")
     
     return networks
+
+
+def scan_specific_target_clients(mon_iface, bssid, channel):
+    """Scan specifically for clients of a target AP
+    
+    Args:
+        mon_iface: Monitor interface
+        bssid: Target AP MAC address
+        channel: Target Channel
+        
+    Returns:
+        List of clients found
+    """
+    import subprocess
+    import signal
+    
+    print(f"\n{Color.HEADER}{'='*80}{Color.ENDC}")
+    print(f"{Color.HEADER}  TARGETED CLIENT SCAN (BSSID: {bssid} | CH: {channel}){Color.ENDC}")
+    print(f"{Color.HEADER}{'='*80}{Color.ENDC}")
+    print(f"{Color.CYAN}[*] Focusing scan on ONE network to find connected clients...{Color.ENDC}")
+    print(f"{Color.WARNING}[!] Press Ctrl+C in the XTERM window when satisfied with results{Color.ENDC}")
+    time.sleep(2)
+    
+    run_command("rm -f /tmp/kismet_target*")
+    
+    # Specific targeted scan
+    cmd = (f"xterm -geometry 100x30 "
+           f"-title 'TARGETED SCAN: {bssid} (CH {channel}) - FINDING CLIENTS... CTRL+C TO STOP' "
+           f"-e 'airodump-ng -c {channel} --bssid {bssid} --output-format csv -w /tmp/kismet_target {mon_iface}'")
+    
+    os.system(cmd)
+    
+    # Parse results
+    clients = []
+    try:
+        list_of_files = glob.glob('/tmp/kismet_target*.csv')
+        if list_of_files:
+            latest_file = max(list_of_files, key=os.path.getctime)
+            clients = parse_clients_from_csv(latest_file)
+    except Exception as e:
+        print(f"{Color.FAIL}[!] Error parsing targeted scan: {e}{Color.ENDC}")
+        
+    return clients

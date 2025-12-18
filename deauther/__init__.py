@@ -50,7 +50,8 @@ from .scanner import (
     parse_clients_from_csv,
     scan_networks_and_clients,
     scan_networks_live,
-    scan_networks_realtime
+    scan_networks_realtime,
+    scan_specific_target_clients
 )
 
 from .attack import (
@@ -60,6 +61,8 @@ from .attack import (
     deauth_attack_multi,
     parse_target_selection,
     get_active_attack_count,
+    mdk4_beacon_flood,
+    mdk4_deauth_hopping,
     active_attack_processes
 )
 
@@ -103,6 +106,7 @@ __all__ = [
     'scan_networks_and_clients',
     'scan_networks_live',
     'scan_networks_realtime',
+    'scan_specific_target_clients',
     # Attack
     'kill_all_attacks',
     'deauth_attack_single_optimized',
@@ -110,5 +114,7 @@ __all__ = [
     'deauth_attack_multi',
     'parse_target_selection',
     'get_active_attack_count',
+    'mdk4_beacon_flood',
+    'mdk4_deauth_hopping',
     'active_attack_processes'
 ]
